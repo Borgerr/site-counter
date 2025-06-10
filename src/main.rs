@@ -1,17 +1,17 @@
-use colored::{Colorize, ColoredString};
+use colored::{ColoredString, Colorize};
 //use sqlx::postgres::PgPoolOptions;
 
 use std::{env, thread};
 
 mod crawl;
-use crawl::run_dfs;
+use crawl::{DfsState, run_dfs};
 
 fn log(s: ColoredString) {
     println!("LOG: {}", s)
 }
 
 #[tokio::main]
-async fn main() -> Result<(), sqlx::Error> {
+async fn main() {
     /*
     let db_name = env::var("PG_DBNAME").unwrap();
     let db_host = env::var("PG_HOST").unwrap();
@@ -40,12 +40,19 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
     */
 
-    log("Successfully connected to database.".to_string().green().bold());
+    log("Successfully connected to database."
+        .to_string()
+        .green()
+        .bold());
     //log(format!("Beginning search starting at URL: {}", url).green());
 
     let mut tasks = Vec::with_capacity(num_cpus);
+    let state = DfsState::new();
     for _ in 0..num_cpus {
-        tasks.push(tokio::spawn(run_dfs()));
+        let threads_state = state.clone();
+        tasks.push(tokio::spawn(async move {
+            run_dfs(threads_state).await;
+        }));
     }
     for task in tasks {
         task.await.unwrap();
@@ -56,6 +63,4 @@ async fn main() -> Result<(), sqlx::Error> {
     // then also want to emit some sort of file encoding what URLs are visited and how often
     // probably not more complicated than simply writing a json string
 
-    Ok(())
 }
-

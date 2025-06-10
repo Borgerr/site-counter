@@ -1,24 +1,47 @@
-use num_bigint::BigUint;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
+use num_bigint::BigUint;
+use tempfile::{TempDir, tempdir};
 
-use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 type Url = String;
 
-struct DfsState {
-    pub visited: HashMap<Url, BigUint>, // maps URLs to the number of times they've been visited
-    pub queue: Vec<Url>,    // queue of URLs to visit
+#[derive(Clone)]
+pub struct DfsState {
+    pub visited: DashMap<Url, BigUint>, // maps URLs to the number of times they've been visited
+    pub queue: Arc<Mutex<Vec<Url>>>,    // queue of URLs to visit
+    pub working_threads: Arc<Mutex<usize>>, // number of threads currently fetching something
+}
+
+impl DfsState {
+    pub fn new() -> Self {
+        DfsState {
+            visited: DashMap::new(),
+            queue: Arc::new(Mutex::new(Vec::new())),
+            working_threads: Arc::new(Mutex::new(thread::available_parallelism().unwrap().get())),
+        }
+    }
+    pub fn append_url(&mut self, url: Url) {
+        self.queue.lock().unwrap().push(url)
+    }
+    pub fn get_url(&mut self) -> Option<Url> {
+        self.queue.lock().unwrap().pop()
+    }
 }
 
 lazy_static! {
-    static ref DFSSTATE: DfsState = DfsState {
-        visited: HashMap::new(),
-        queue: Vec::new(),
-    };
+    static ref TEMPDIR: TempDir = tempdir().unwrap();
 }
 
-pub async fn run_dfs() {
-    println!("Run_dfs...");
-    tokio::time::sleep(std::time::Duration::from_millis(10000)).await;
+pub async fn run_dfs(mut dfs_state: DfsState) {
+    assert!(TEMPDIR.path().exists());
+    loop {
+        let url_res = dfs_state.get_url();
+        match url_res {
+            Some(_) => println!("Got a url!"),
+            _ => return,
+        }
+    }
 }
-
