@@ -33,6 +33,12 @@ impl DfsState {
     pub fn get_working_threads(&mut self) -> usize {
         *self.working_threads.lock().unwrap()
     }
+    pub fn decrement_working_threads(&mut self) {
+        *self.working_threads.lock().unwrap() -= 1
+    }
+    pub fn increment_working_threads(&mut self) {
+        *self.working_threads.lock().unwrap() += 1
+    }
     pub fn increment_value(&mut self, key: Url) {
         self.visited.entry(key).and_modify(|v| *v += BigUint::one()).or_insert(BigUint::one());
     }
@@ -48,20 +54,26 @@ pub async fn run_dfs(mut dfs_state: DfsState) {
         let url_res = dfs_state.get_url();
         match url_res {
             Some(url) => {
+                dfs_state.increment_working_threads();
                 if dfs_state.visited.contains_key(&url) {
                     // increment and don't fetch
                     dfs_state.increment_value(url)
                 } else {
                     // fetch page, extract URLs, and move on
-                    fetch_and_extract(url).await
+                    fetch_and_extract(url, &mut dfs_state).await
                 }
             },
-            _ => return,
+            _ => {
+                dfs_state.decrement_working_threads();
+                if dfs_state.get_working_threads() == 0 {
+                    return;
+                }
+            },
         }
     }
 }
 
-async fn fetch_and_extract(url: Url) {
+async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState) {
     todo!("fetch webpage, place into tmpfs, and return extracted URLs")
 }
 
