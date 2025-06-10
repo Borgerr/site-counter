@@ -1,5 +1,5 @@
 use colored::{Colorize, ColoredString};
-use sqlx::postgres::PgPoolOptions;
+//use sqlx::postgres::PgPoolOptions;
 
 use std::{env, thread};
 
@@ -12,10 +12,12 @@ fn log(s: ColoredString) {
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+    /*
     let db_name = env::var("PG_DBNAME").unwrap();
     let db_host = env::var("PG_HOST").unwrap();
     let db_user = env::var("PG_USER").unwrap();
     let db_password = env::var("PG_PASSWORD").unwrap();
+    */
     /*
     let url = env::var("START_URL")
         .expect("Crawlers need somewhere to start! Set this START_URL variable.");
@@ -26,6 +28,7 @@ async fn main() -> Result<(), sqlx::Error> {
         _ => num_cpus,
     };
 
+    /*
     let database_url = format!(
         "postgres://{}:{}@{}/{}",
         db_user, db_password, db_host, db_name
@@ -35,12 +38,13 @@ async fn main() -> Result<(), sqlx::Error> {
         .max_connections(num_cpus as u32)
         .connect(&database_url)
         .await?;
+    */
 
     log("Successfully connected to database.".to_string().green().bold());
     //log(format!("Beginning search starting at URL: {}", url).green());
 
     let mut tasks = Vec::with_capacity(num_cpus);
-    for cpu in 0..num_cpus {
+    for _ in 0..num_cpus {
         tasks.push(tokio::spawn(run_dfs()));
     }
     for task in tasks {

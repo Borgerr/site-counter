@@ -19,6 +19,6 @@ lazy_static! {
 
 pub async fn run_dfs() {
     println!("Run_dfs...");
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(10000)).await;
 }
 
