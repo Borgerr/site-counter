@@ -5,7 +5,7 @@ use num_traits::One;
 use tempfile::{TempDir, tempdir};
 
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::{io::Write, fs::File, thread};
 
 type Url = String;
 
@@ -74,6 +74,11 @@ pub async fn run_dfs(mut dfs_state: DfsState) {
 }
 
 async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState) {
-    todo!("fetch webpage, place into tmpfs, and return extracted URLs")
+    let resp = reqwest::get(url.clone()).await.unwrap().text().await.unwrap();
+    let file_path = TEMPDIR.path().join(format!("{}.html", url));
+    let mut file = File::create(file_path).unwrap();
+    write!(file, "{}", resp).unwrap();
+
+    todo!("place URLs into queue")
 }
 
