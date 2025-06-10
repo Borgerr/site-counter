@@ -3,6 +3,7 @@ use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use num_traits::One;
 use tempfile::{TempDir, tempdir};
+use regex::Regex;
 
 use std::sync::{Arc, Mutex};
 use std::{io::Write, fs::File, thread};
@@ -46,6 +47,7 @@ impl DfsState {
 
 lazy_static! {
     static ref TEMPDIR: TempDir = tempdir().unwrap();
+    static ref URL_RE: Regex = Regex::new(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)").unwrap();
 }
 
 pub async fn run_dfs(mut dfs_state: DfsState) {
@@ -79,6 +81,8 @@ async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState) {
     let mut file = File::create(file_path).unwrap();
     write!(file, "{}", resp).unwrap();
 
-    todo!("place URLs into queue")
+    let urls = URL_RE.find_iter(&resp).for_each(|url| {
+        dfs_state.append_url(url.as_str().to_string())
+    });
 }
 
