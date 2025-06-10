@@ -1,6 +1,7 @@
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
+use num_traits::One;
 use tempfile::{TempDir, tempdir};
 
 use std::sync::{Arc, Mutex};
@@ -29,6 +30,12 @@ impl DfsState {
     pub fn get_url(&mut self) -> Option<Url> {
         self.queue.lock().unwrap().pop()
     }
+    pub fn get_working_threads(&mut self) -> usize {
+        *self.working_threads.lock().unwrap()
+    }
+    pub fn increment_value(&mut self, key: Url) {
+        self.visited.entry(key).and_modify(|v| *v += BigUint::one()).or_insert(BigUint::one());
+    }
 }
 
 lazy_static! {
@@ -40,8 +47,21 @@ pub async fn run_dfs(mut dfs_state: DfsState) {
     loop {
         let url_res = dfs_state.get_url();
         match url_res {
-            Some(_) => println!("Got a url!"),
+            Some(url) => {
+                if dfs_state.visited.contains_key(&url) {
+                    // increment and don't fetch
+                    dfs_state.increment_value(url)
+                } else {
+                    // fetch page, extract URLs, and move on
+                    fetch_and_extract(url).await
+                }
+            },
             _ => return,
         }
     }
 }
+
+async fn fetch_and_extract(url: Url) {
+    todo!("fetch webpage, place into tmpfs, and return extracted URLs")
+}
+

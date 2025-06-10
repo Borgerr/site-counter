@@ -62,5 +62,4 @@ async fn main() {
     // probably want to put a cap on how much data can be in the db
     // then also want to emit some sort of file encoding what URLs are visited and how often
     // probably not more complicated than simply writing a json string
-
 }

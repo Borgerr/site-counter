@@ -333,6 +333,7 @@ dependencies = [
  "dotenvy",
  "lazy_static",
  "num-bigint",
+ "num-traits",
  "tempfile",
  "tokio",
 ]
