@@ -1,0 +1,42 @@
+name: site_counter
+services:
+  site_counter:
+    build:
+      context: site_counter
+      target: development
+    environment:
+      - ADDRESS=0.0.0.0:8000
+      - RUST_LOG=debug
+      - PG_DBNAME=postgres
+      - PG_HOST=db
+      - PG_USER=postgres
+      - PG_PASSWORD=mysecretpassword
+    networks:
+      - client-side
+      - server-side
+    volumes:
+      - ./site_counter/src:/code/src
+      - site_counter-cache:/code/target
+    depends_on:
+      - db
+
+  db:
+    image: postgres:12-alpine
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=postgres
+    networks:
+      - server-side
+    ports:
+      - 5432:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+networks:
+  client-side: {}
+  server-side: {}
+
+volumes:
+  site_counter-cache: {}
+  db-data: {}

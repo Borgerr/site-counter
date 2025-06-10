@@ -1,0 +1,13 @@
+[package]
+name = "site_counter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+num-bigint = "0.4.6"
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-native-tls"] }
+dotenvy = "0.15"
+chrono = "0.4"
+colored = "3.0.0"
+lazy_static = "1.5.0"
