@@ -1,5 +1,5 @@
+use clap::Parser;
 use colored::{ColoredString, Colorize};
-//use sqlx::postgres::PgPoolOptions;
 
 use std::{env, thread};
 
@@ -10,14 +10,25 @@ fn log(s: ColoredString) {
     println!("LOG: {}", s)
 }
 
+#[derive(Parser)]
+#[command(version("0.1.0"), about = "A webscraper", long_about = None)]
+struct Cli {
+    #[clap(
+        short,
+        action,
+        help = "Give verbose output at runtime about which URLs are visited, whether or not responses were received, etc"
+    )]
+    verbose: bool,
+}
+
 #[tokio::main]
 async fn main() {
     let url = env::var("START_URL")
         .expect("Crawlers need somewhere to start! Set this START_URL variable.");
-    let num_cpus = thread::available_parallelism().unwrap().get();
-    let num_cpus = match env::var("NUM_CPUS") {
-        Ok(s) => s.parse::<usize>().unwrap_or(num_cpus),
-        _ => num_cpus,
+    let num_workers = thread::available_parallelism().unwrap().get();
+    let num_workers = match env::var("NUM_WORKERS") {
+        Ok(s) => s.parse::<usize>().unwrap_or(num_workers),
+        _ => num_workers,
     };
 
     log("Successfully connected to database."
@@ -25,10 +36,10 @@ async fn main() {
         .green()
         .bold());
 
-    /*
-    let mut tasks = Vec::with_capacity(num_cpus);
-    let state = DfsState::new();
-    for _ in 0..num_cpus {
+    let mut tasks = Vec::with_capacity(num_workers);
+    let mut state = DfsState::new();
+    state.append_url(url);
+    for _ in 0..num_workers {
         let threads_state = state.clone();
         tasks.push(tokio::spawn(async move {
             run_dfs(threads_state).await;
@@ -37,7 +48,6 @@ async fn main() {
     for task in tasks {
         task.await.unwrap();
     }
-    */
 
     // TODO: fetch all data and put into a zip file
     // probably want to put a cap on how much data can be in the db

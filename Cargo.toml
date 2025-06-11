@@ -14,3 +14,4 @@ dashmap = "6.1.0"
 num-traits = "0.2.19"
 reqwest = "0.12.20"
 regex = "1.11.1"
+clap = { version = "4.5.40", features = ["derive"] }
