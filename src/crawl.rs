@@ -47,7 +47,7 @@ impl DfsState {
 
 lazy_static! {
     static ref TEMPDIR: TempDir = tempdir().unwrap();
-    static ref URL_RE: Regex = Regex::new(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)").unwrap();
+    static ref URL_RE: Regex = Regex::new(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b").unwrap();
 }
 
 pub async fn run_dfs(mut dfs_state: DfsState) {
