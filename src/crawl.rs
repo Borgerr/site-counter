@@ -3,15 +3,15 @@ use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use num_traits::One;
 use regex::Regex;
-use tempfile::{TempDir, tempdir};
+//use tempfile::{TempDir, tempdir};
 
 use std::sync::{Arc, Mutex};
 use std::{fs::File, io::Write, thread};
 
 use super::Url;
+use super::TEMPDIR;
 
 lazy_static! {
-    static ref TEMPDIR: TempDir = tempdir().unwrap();
     static ref URL_RE: Regex =
         Regex::new(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b")
             .unwrap();

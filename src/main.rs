@@ -1,10 +1,18 @@
 use clap::Parser;
 use colored::{ColoredString, Colorize};
+use lazy_static::lazy_static;
+use tempfile::{TempDir, tempdir};
+
+use tokio::time::{sleep, Duration};
 
 use std::thread;
 
 mod crawl;
 use crawl::{DfsState, run_dfs};
+
+lazy_static! {
+    pub static ref TEMPDIR: TempDir = tempdir().unwrap();
+}
 
 fn log(s: ColoredString) {
     println!("LOG: {}", s)
@@ -49,11 +57,13 @@ async fn main() {
     let num_workers = args.num_workers.unwrap_or(num_workers);
     let tmpfs_size = args.tmpfs_size.unwrap_or(200);
 
-    log("Successfully connected to database."
-        .to_string()
-        .green()
-        .bold());
+    // TODO: setup background task checking for tmpfs size
+    let _ = tokio::task::spawn(async {
+        println!("waiting 2 seconds...");
+        sleep(Duration::from_millis(200)).await;
+    });
 
+    /*
     let mut tasks = Vec::with_capacity(num_workers);
     let mut state = DfsState::new();
     state.append_url(start_url, verbosity);
@@ -63,9 +73,11 @@ async fn main() {
             run_dfs(threads_state, verbosity).await;
         }));
     }
+
     for task in tasks {
         task.await.unwrap();
     }
+    */
 
     // TODO: fetch all data and put into a zip file
     // probably want to put a cap on how much data can be in the db
