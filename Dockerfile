@@ -5,7 +5,7 @@ COPY . .
 
 RUN cargo install --path .
 
-ENV START_URL = "wikipedia.com"
+ENV START_URL="wikipedia.com"
 
 CMD ["site_counter"]
 
