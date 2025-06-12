@@ -8,7 +8,14 @@ use tempfile::{TempDir, tempdir};
 use std::sync::{Arc, Mutex};
 use std::{fs::File, io::Write, thread};
 
-type Url = String;
+use super::Url;
+
+lazy_static! {
+    static ref TEMPDIR: TempDir = tempdir().unwrap();
+    static ref URL_RE: Regex =
+        Regex::new(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b")
+            .unwrap();
+}
 
 #[derive(Clone)]
 pub struct DfsState {
@@ -25,8 +32,13 @@ impl DfsState {
             working_threads: Arc::new(Mutex::new(thread::available_parallelism().unwrap().get())),
         }
     }
-    pub fn append_url(&mut self, url: Url) {
-        self.queue.lock().unwrap().push(url)
+    pub fn append_url(&mut self, url: Url, verbosity: bool) {
+        if URL_RE.is_match(&url) {
+            verbosity.then(|| println!("added URL: {}", url));
+            self.queue.lock().unwrap().push(url)
+        } else {
+            verbosity.then(|| println!("didn't add URL: {}", url));
+        }
     }
     pub fn get_url(&mut self) -> Option<Url> {
         self.queue.lock().unwrap().pop()
@@ -48,14 +60,7 @@ impl DfsState {
     }
 }
 
-lazy_static! {
-    static ref TEMPDIR: TempDir = tempdir().unwrap();
-    static ref URL_RE: Regex =
-        Regex::new(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b")
-            .unwrap();
-}
-
-pub async fn run_dfs(mut dfs_state: DfsState) {
+pub async fn run_dfs(mut dfs_state: DfsState, verbosity: bool) {
     assert!(TEMPDIR.path().exists());
     loop {
         let url_res = dfs_state.get_url();
@@ -67,12 +72,14 @@ pub async fn run_dfs(mut dfs_state: DfsState) {
                     dfs_state.increment_value(url)
                 } else {
                     // fetch page, extract URLs, and move on
-                    fetch_and_extract(url, &mut dfs_state).await
+                    fetch_and_extract(url, &mut dfs_state, verbosity).await
                 }
             }
             _ => {
                 dfs_state.decrement_working_threads();
-                if dfs_state.get_working_threads() == 0 {
+                let working_threads = dfs_state.get_working_threads();
+                verbosity.then(|| println!("working threads: {}", working_threads));
+                if working_threads == 0 {
                     return;
                 }
             }
@@ -80,7 +87,7 @@ pub async fn run_dfs(mut dfs_state: DfsState) {
     }
 }
 
-async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState) {
+async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState, verbosity: bool) {
     let resp = reqwest::get(url.clone())
         .await
         .unwrap()
@@ -93,5 +100,5 @@ async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState) {
 
     URL_RE
         .find_iter(&resp)
-        .for_each(|url| dfs_state.append_url(url.as_str().to_string()));
+        .for_each(|url| dfs_state.append_url(url.as_str().to_string(), verbosity));
 }
