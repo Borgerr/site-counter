@@ -8,8 +8,8 @@ use regex::Regex;
 use std::sync::{Arc, Mutex};
 use std::{fs::File, io::Write, thread};
 
-use super::Url;
 use super::TEMPDIR;
+use super::Url;
 
 lazy_static! {
     static ref URL_RE: Regex =
