@@ -67,12 +67,14 @@ pub async fn run_dfs(mut dfs_state: DfsState, verbosity: bool) {
         let url_res = dfs_state.get_url();
         match url_res {
             Some(url) => {
+                verbosity.then(|| println!("investigating url {}", url));
                 // TODO: revisit
                 // we need to ensure there's only one operation where we check if we've visited a
                 // site, otherwise we have multiple workers thinking they're the first
                 dfs_state.increment_working_threads();
                 if dfs_state.visited.contains_key(&url) {
                     // increment and don't fetch
+                    verbosity.then(|| println!("url {} already visited", url));
                     dfs_state.increment_value(url)
                 } else {
                     // TODO: need to immediately increment so other workers don't also fetch
@@ -93,6 +95,9 @@ pub async fn run_dfs(mut dfs_state: DfsState, verbosity: bool) {
 }
 
 async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState, verbosity: bool) {
+    verbosity.then(|| println!("fetching url {}", url));
+    
+    // TODO: blocking here?
     let resp = reqwest::get(url.clone())
         .await
         .unwrap()
