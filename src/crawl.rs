@@ -15,6 +15,7 @@ lazy_static! {
     static ref URL_RE: Regex =
         Regex::new(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b")
             .unwrap();
+    static ref PROTOCOL_RE: Regex = Regex::new(r"https?:\/\/").unwrap();
 }
 
 #[derive(Clone)]
@@ -66,11 +67,15 @@ pub async fn run_dfs(mut dfs_state: DfsState, verbosity: bool) {
         let url_res = dfs_state.get_url();
         match url_res {
             Some(url) => {
+                // TODO: revisit
+                // we need to ensure there's only one operation where we check if we've visited a
+                // site, otherwise we have multiple workers thinking they're the first
                 dfs_state.increment_working_threads();
                 if dfs_state.visited.contains_key(&url) {
                     // increment and don't fetch
                     dfs_state.increment_value(url)
                 } else {
+                    // TODO: need to immediately increment so other workers don't also fetch
                     // fetch page, extract URLs, and move on
                     fetch_and_extract(url, &mut dfs_state, verbosity).await
                 }
@@ -95,7 +100,17 @@ async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState, verbosity: bool) 
         .await
         .unwrap();
     //let file_path = TEMPDIR.path().join(format!("{}.html", url));
-    let file_path = TEMPDIR.path().join("guy.html");
+    //let file_path = TEMPDIR.path().join("guy.html");
+    let protocol = PROTOCOL_RE
+        .find(url.as_str())
+        .expect("URL_RE guarantees PROTOCOL_RE matches on url param. Investigate.");
+    let file_path_str: Url = url
+        .trim_start_matches(protocol.as_str())
+        .chars()
+        .map(|c| if c == '/' { '-' } else { c })
+        .collect();
+    let file_path = TEMPDIR.path().join(format!("{}.html", file_path_str));
+
     println!("DEBUG PRINT: file_path: {}", file_path.display());
     let mut file = File::create(file_path).unwrap();
     write!(file, "{}", resp).unwrap();

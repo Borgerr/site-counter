@@ -10,12 +10,12 @@ use tokio::{
 
 // taken from zip-rs examples
 use anyhow::Context;
-use zip::{result::ZipError, write::SimpleFileOptions};
 use walkdir::{DirEntry, WalkDir};
+use zip::{result::ZipError, write::SimpleFileOptions};
 
 use std::{
     fs::File,
-    io::{Write, Seek, Read},
+    io::{Read, Seek, Write},
     path::{Path, PathBuf},
     thread,
 };
