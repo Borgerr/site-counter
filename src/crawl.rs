@@ -97,7 +97,6 @@ pub async fn run_dfs(mut dfs_state: DfsState, verbosity: bool) {
 async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState, verbosity: bool) {
     verbosity.then(|| println!("fetching url {}", url));
     
-    // TODO: blocking here?
     let resp = reqwest::get(url.clone())
         .await
         .unwrap()

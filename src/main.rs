@@ -87,7 +87,7 @@ async fn main() {
         }));
     }
 
-    wait_loop(tmpfs_size, tasks).await;
+    wait_loop(tmpfs_size, tasks, verbosity).await;
 
     let stats_path = TEMPDIR.path().join("stats.json");
     let mut stats_file = File::create(stats_path).unwrap();
@@ -101,13 +101,14 @@ fn currentsize_tmpfs() -> u64 {
     get_size(TEMPDIR.path()).unwrap()
 }
 
-async fn wait_loop(tmpfs_size: u64, tasks: Vec<JoinHandle<()>>) {
+async fn wait_loop(tmpfs_size: u64, tasks: Vec<JoinHandle<()>>, verbosity: bool) {
     loop {
         if currentsize_tmpfs() >= tmpfs_size {
             for task in &tasks {
                 // TODO: should probably abort more gracefully
+                verbosity.then(|| println!("aborting tasks..."));
                 task.abort();
-                break;
+                break;  // TODO: this break statement is misplaced
             }
         }
         sleep(Duration::from_millis(200)).await;
