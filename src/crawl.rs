@@ -94,7 +94,9 @@ async fn fetch_and_extract(url: Url, dfs_state: &mut DfsState, verbosity: bool) 
         .text()
         .await
         .unwrap();
-    let file_path = TEMPDIR.path().join(format!("{}.html", url));
+    //let file_path = TEMPDIR.path().join(format!("{}.html", url));
+    let file_path = TEMPDIR.path().join("guy.html");
+    println!("DEBUG PRINT: file_path: {}", file_path.display());
     let mut file = File::create(file_path).unwrap();
     write!(file, "{}", resp).unwrap();
 
