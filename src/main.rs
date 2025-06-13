@@ -38,7 +38,7 @@ struct Args {
     #[clap(
         short,
         action,
-        help = "Give verbose output at runtime about which URLs are visited, whether or not responses were received, etc"
+        help = "Give verbose output at runtime about which URLs are visited, whether or not responses were received, etc."
     )]
     verbose: bool,
     #[clap(
@@ -52,7 +52,7 @@ struct Args {
         short,
         long,
         value_name = "ARCHIVE_SIZE",
-        help = "Maximum size of the produced archive, in MB."
+        help = "Maximum size of the produced archive, in KB."
     )]
     tmpfs_size: Option<u64>,
     #[clap(
@@ -61,7 +61,7 @@ struct Args {
         value_name = "DESTINATION_ZIPFILE",
         help = "Where to place the result archive."
     )]
-    destination: PathBuf,
+    destination: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -72,8 +72,10 @@ async fn main() {
     let start_url = args.start_url;
     let num_workers = thread::available_parallelism().unwrap().get();
     let num_workers = args.num_workers.unwrap_or(num_workers);
-    let tmpfs_size = args.tmpfs_size.unwrap_or(200);
-    let dst_file = args.destination;
+    let tmpfs_size = args.tmpfs_size.unwrap_or(4);
+    let dst_file = args.destination.unwrap_or("./archive.xz".into());
+
+    verbosity.then(|| println!("TEMPDIR is {}", TEMPDIR.path().display()));
 
     let mut tasks = Vec::with_capacity(num_workers);
     let mut state = DfsState::new();
@@ -92,7 +94,7 @@ async fn main() {
     write!(stats_file, "{}", json!(*state.visited));
 
     // TODO: zip TEMPDIR and put into an accessible archive
-
+    doit(TEMPDIR.path(), &dst_file, zip::CompressionMethod::Xz);
 }
 
 fn currentsize_tmpfs() -> u64 {
