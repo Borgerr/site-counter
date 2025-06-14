@@ -21,7 +21,7 @@ use std::{
 };
 
 mod crawl;
-use crawl::{DfsState, run_dfs};
+use crawl::{DfsState, Worker};
 
 lazy_static! {
     pub static ref TEMPDIR: TempDir =
@@ -72,44 +72,63 @@ async fn main() {
     let start_url = args.start_url;
     let num_workers = thread::available_parallelism().unwrap().get();
     let num_workers = args.num_workers.unwrap_or(num_workers);
-    let tmpfs_size = args.tmpfs_size.unwrap_or(4);
+    let tmpfs_size = args.tmpfs_size.unwrap_or(4) << 10; // << 10 -> KiB
     let dst_file = args.destination.unwrap_or("./archive.xz".into());
 
     verbosity.then(|| println!("TEMPDIR is {}", TEMPDIR.path().display()));
 
     let mut tasks = Vec::with_capacity(num_workers);
-    let mut state = DfsState::new();
+    let mut state = DfsState::new(num_workers);
     state.append_url(start_url, verbosity);
-    for _ in 0..num_workers {
-        let threads_state = state.clone();
-        tasks.push(tokio::spawn(async move {
-            run_dfs(threads_state, verbosity).await;
-        }));
-    }
 
-    wait_loop(tmpfs_size, tasks, verbosity).await;
+    tokio::select!(
+        _ = wait_for_size(tmpfs_size, verbosity) => (),
+        _ = wait_for_workers(num_workers, state.clone(), &mut tasks, verbosity) => ()
+    );
+    for task in &tasks {
+        // TODO: should probably abort more gracefully
+        verbosity.then(|| println!("Killing tasks..."));
+        task.abort();
+    }
 
     let stats_path = TEMPDIR.path().join("stats.json");
     let mut stats_file = File::create(stats_path).unwrap();
     write!(stats_file, "{}", json!(*state.visited));
 
     // TODO: zip TEMPDIR and put into an accessible archive
-    doit(TEMPDIR.path(), &dst_file, zip::CompressionMethod::Xz);
+    doit(TEMPDIR.path(), &dst_file, zip::CompressionMethod::Xz).unwrap();
 }
 
 fn currentsize_tmpfs() -> u64 {
     get_size(TEMPDIR.path()).unwrap()
 }
 
-async fn wait_loop(tmpfs_size: u64, tasks: Vec<JoinHandle<()>>, verbosity: bool) {
+async fn wait_for_workers(
+    num_workers: usize,
+    state: DfsState,
+    tasks: &mut Vec<JoinHandle<()>>,
+    verbosity: bool,
+) {
+    for _ in 0..num_workers {
+        let threads_state = state.clone();
+        let worker = Worker::new(state.clone(), verbosity);
+        tasks.push(tokio::spawn(async move {
+            worker.crawl().await;
+        }));
+    }
+}
+
+async fn wait_for_size(tmpfs_size: u64, verbosity: bool) {
     loop {
+        verbosity.then(|| {
+            println!(
+                "tmpfs_size: {}, currentsize_tmpfs: {}",
+                tmpfs_size,
+                currentsize_tmpfs()
+            )
+        });
         if currentsize_tmpfs() >= tmpfs_size {
-            for task in &tasks {
-                // TODO: should probably abort more gracefully
-                verbosity.then(|| println!("aborting tasks..."));
-                task.abort();
-                break;  // TODO: this break statement is misplaced
-            }
+            break;
         }
         sleep(Duration::from_millis(200)).await;
     }
