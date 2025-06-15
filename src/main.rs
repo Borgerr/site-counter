@@ -31,16 +31,10 @@ lazy_static! {
 type Url = String; // Rust probably has a better type for this
 
 #[derive(Parser)]
-#[command(version("0.1.0"), about = "A webscraper", long_about = None)]
+#[command(version("0.1.0"), about = "A webscraper that fetches websites and counts their references from others visited, and outputs all this data into an archive.", long_about = None)]
 struct Args {
     #[arg(help = "URL to start off with. Must include protocol, URL, and any optional path.")]
     start_url: Url,
-    #[clap(
-        short,
-        action,
-        help = "Give verbose output at runtime about which URLs are visited, whether or not responses were received, etc."
-    )]
-    verbose: bool,
     #[clap(
         short,
         long,
@@ -62,6 +56,19 @@ struct Args {
         help = "Where to place the result archive."
     )]
     destination: Option<PathBuf>,
+    #[clap(
+        long,
+        short,
+        action,
+        help = "Crawling algorithm is breadth first instead of depth first when set."
+    )]
+    is_bfs: bool,
+    #[clap(
+        short,
+        action,
+        help = "Give verbose output at runtime about which URLs are visited, whether or not responses were received, etc."
+    )]
+    verbose: bool,
 }
 
 #[tokio::main]
@@ -74,11 +81,12 @@ async fn main() {
     let num_workers = args.num_workers.unwrap_or(num_workers);
     let tmpfs_size = args.tmpfs_size.unwrap_or(4) << 10; // << 10 -> KiB
     let dst_file = args.destination.unwrap_or("./archive.xz".into());
+    let is_bfs = args.is_bfs;
 
     verbosity.then(|| println!("TEMPDIR is {}", TEMPDIR.path().display()));
 
     let mut tasks = Vec::with_capacity(num_workers);
-    let mut state = DfsState::new(num_workers);
+    let mut state = DfsState::new(num_workers, is_bfs);
     state.append_url(start_url, verbosity);
 
     tokio::select!(
