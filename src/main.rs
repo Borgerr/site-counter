@@ -110,12 +110,15 @@ async fn wait_for_workers(
     verbosity: bool,
 ) {
     for _ in 0..num_workers {
-        let threads_state = state.clone();
         let worker = Worker::new(state.clone(), verbosity);
         tasks.push(tokio::spawn(async move {
             worker.crawl().await;
         }));
     }
+    for task in tasks {
+        task.await.unwrap();
+    }
+    verbosity.then(|| println!("returning from wait_for_workers..."));
 }
 
 async fn wait_for_size(tmpfs_size: u64, verbosity: bool) {
@@ -132,6 +135,7 @@ async fn wait_for_size(tmpfs_size: u64, verbosity: bool) {
         }
         sleep(Duration::from_millis(200)).await;
     }
+    verbosity.then(|| println!("returning from wait_for_size..."));
 }
 
 // compression taken from zip-rs examples
