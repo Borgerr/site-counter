@@ -4,9 +4,9 @@ use num_bigint::BigUint;
 use num_traits::One;
 use regex::Regex;
 
+use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use parking_lot::Mutex;
 use std::{fs::File, io::Write};
 
 use super::TEMPDIR;
@@ -88,7 +88,11 @@ pub struct Worker {
 
 impl Worker {
     pub fn new(state: DfsState, verbosity: bool) -> Self {
-        Self { state, verbosity, is_active: true }
+        Self {
+            state,
+            verbosity,
+            is_active: true,
+        }
     }
     fn check_activity(&mut self) -> usize {
         if self.is_active {
@@ -156,7 +160,7 @@ impl Worker {
             .trim_start_matches(protocol.as_str())
             .chars()
             .map(|c| if c == '/' { '-' } else { c })
-            .take(200)  // some greedy bastards at google are eating up all my filename space
+            .take(200) // some greedy bastards at google are eating up all my filename space
             .collect();
         let file_path = TEMPDIR.path().join(format!("{}.html", file_path_str));
 
