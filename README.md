@@ -8,6 +8,7 @@ Site Counter is currently a CLI tool with the following options:
 
 A webscraper that fetches websites and counts their references from others visited, and outputs all this data into an archive.
 
+```
 Usage: site_counter [OPTIONS] <START_URL>
 
 Arguments:
@@ -28,4 +29,5 @@ Options:
           Print help
   -V, --version
           Print version
+```
 
