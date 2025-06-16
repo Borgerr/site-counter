@@ -1490,6 +1490,7 @@ dependencies = [
  "lazy_static",
  "num-bigint",
  "num-traits",
+ "parking_lot",
  "regex",
  "reqwest",
  "serde_json",

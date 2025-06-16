@@ -5,7 +5,8 @@ COPY . .
 
 RUN cargo install --path .
 
-ENV START_URL="wikipedia.com"
+ENV START_URL="https://wikipedia.com"
+ENV DST_FILE="./archive.xz"
 
-CMD ["site_counter"]
+CMD ["site_counter", "$START_URL",  "-d", "$DST_FILE"]
 
