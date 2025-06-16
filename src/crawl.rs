@@ -5,7 +5,8 @@ use num_traits::One;
 use regex::Regex;
 
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use parking_lot::Mutex;
 use std::{fs::File, io::Write};
 
 use super::TEMPDIR;
@@ -39,9 +40,9 @@ impl DfsState {
         if URL_RE.is_match(&url) {
             verbosity.then(|| println!("added URL: {}", url));
             if self.is_bfs {
-                self.queue.lock().unwrap().push_front(url)
+                self.queue.lock().push_front(url)
             } else {
-                self.queue.lock().unwrap().push_back(url)
+                self.queue.lock().push_back(url)
             }
         } else {
             verbosity.then(|| println!("didn't add URL: {}", url));
@@ -49,28 +50,23 @@ impl DfsState {
     }
     pub fn get_url(&mut self) -> Option<Url> {
         if self.is_bfs {
-            self.queue.lock().unwrap().pop_front()
+            self.queue.lock().pop_front()
         } else {
-            self.queue.lock().unwrap().pop_back()
+            self.queue.lock().pop_back()
         }
     }
-    pub fn get_working_threads(&mut self) -> usize {
-        *self.working_threads.lock().unwrap()
+    pub fn get_active_workers(&mut self) -> usize {
+        *self.working_threads.lock()
     }
-    pub fn decrement_working_threads(&mut self) {
-        *self.working_threads.lock().unwrap() -= 1
+    pub fn mark_worker_inactive(&mut self) -> usize {
+        let mut count = self.working_threads.lock();
+        *count -= 1;
+        *count
     }
-    pub fn increment_working_threads(&mut self) {
-        *self.working_threads.lock().unwrap() += 1
+    pub fn mark_worker_active(&mut self) {
+        let mut count = self.working_threads.lock();
+        *count += 1;
     }
-    /*
-    pub fn increment_value(&mut self, key: Url) {   // TODO: possibly unnecessary with try_claim
-        self.visited
-            .entry(key)
-            .and_modify(|v| *v += BigUint::one())
-            .or_insert(BigUint::one());
-    }
-    */
     pub fn try_claim(&mut self, key: Url) -> bool {
         // TODO:
         // probably just want to keep the DfsState more simple
@@ -89,13 +85,28 @@ impl DfsState {
 pub struct Worker {
     state: DfsState,
     verbosity: bool,
+    is_active: bool,
     // TODO: do we want a worker ID?
     // does tokio have a better style guide for this?
 }
 
 impl Worker {
     pub fn new(state: DfsState, verbosity: bool) -> Self {
-        Self { state, verbosity }
+        Self { state, verbosity, is_active: true }
+    }
+    fn check_activity(&mut self) -> usize {
+        if self.is_active {
+            self.is_active = false;
+            self.state.mark_worker_inactive()
+        } else {
+            self.state.get_active_workers()
+        }
+    }
+    fn set_active(&mut self) {
+        if !self.is_active {
+            self.is_active = true;
+            self.state.mark_worker_active()
+        }
     }
     pub async fn crawl(mut self) {
         assert!(TEMPDIR.path().exists()); // TODO: is this necessary?
@@ -104,12 +115,12 @@ impl Worker {
             let url_res = self.state.get_url();
             match url_res {
                 Some(url) => {
+                    self.set_active();
                     self.verbosity
                         .then(|| println!("investigating url {}", url));
                     // TODO: revisit
                     // we need to ensure there's only one operation where we check if we've visited a
                     // site, otherwise we have multiple workers thinking they're the first
-                    self.state.increment_working_threads();
                     if self.state.try_claim(url.clone()) {
                         self.new_visit(url).await;
                     } else {
@@ -117,8 +128,7 @@ impl Worker {
                     }
                 }
                 _ => {
-                    self.state.decrement_working_threads();
-                    let working_threads = self.state.get_working_threads();
+                    let working_threads = self.check_activity();
                     self.verbosity
                         .then(|| println!("working threads: {}", working_threads));
                     if working_threads == 0 {
@@ -150,6 +160,7 @@ impl Worker {
             .trim_start_matches(protocol.as_str())
             .chars()
             .map(|c| if c == '/' { '-' } else { c })
+            .take(200)  // some greedy bastards at google are eating up all my filename space
             .collect();
         let file_path = TEMPDIR.path().join(format!("{}.html", file_path_str));
 
