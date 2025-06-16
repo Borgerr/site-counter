@@ -39,11 +39,7 @@ impl DfsState {
     pub fn append_url(&mut self, url: Url, verbosity: bool) {
         if URL_RE.is_match(&url) {
             verbosity.then(|| println!("added URL: {}", url));
-            if self.is_bfs {
-                self.queue.lock().push_front(url)
-            } else {
-                self.queue.lock().push_back(url)
-            }
+            self.queue.lock().push_back(url)
         } else {
             verbosity.then(|| println!("didn't add URL: {}", url));
         }
